@@ -1,0 +1,57 @@
+import requests, bs4
+import pandas as pd
+from lxml import html
+from urllib.request import Request, urlopen
+from urllib.parse import urlencode, quote_plus, unquote
+
+for code in ['27'] :
+    for p in range(1, 101, 1):
+        for n in ['1']:
+            try :
+                xmlUrl = "	http://apis.data.go.kr/1613000/AptListService2/getSidoAptList"
+                My_API_Key = unquote('cMzA21BrqzHudU8WINQXo55A9xU1scOd8%2BsWTaKYlXwi5%2FiJDVzzfyjrQfm5DZ%2FwRaBIS5e9JpmmsbvmSvDoVg%3D%3D')
+                queryParams = "?" + urlencode(
+                {
+                    quote_plus('serviceKey') : My_API_Key,      # 필수 항목 1 : 서비스키 (본인의 서비스키)
+                    quote_plus('sidoCode') : code,             # 필수 항목 2 : 시도코드 (법정코드목록조회에서 확인)
+                    quote_plus('pageNo') : p,                   # 필수 항목 3 : 페이지번호
+                    quote_plus('nuOfRows'): n                   # 필수 항목 4 : 목록건수
+                 }
+                )
+                response = requests.get(xmlUrl + queryParams).text.encode('utf-8')
+                xmlobj = bs4.BeautifulSoup(response, 'lxml-xml')
+                # xmlobj    # 디버깅용.
+
+                rows = xmlobj.findAll('item')
+                # rows    # 디버깅용.
+                columns = rows[0].find_all()
+
+            except IndexError:
+                pass
+
+            else:
+                rowList = [] # 행값
+                nameList = ["as1", "as2", "as3", "bjdCode", "kaptCode", "kaptName"] # 열이름값
+                columnList = [] # 데이터값
+
+                rowsLen = len(rows)
+                for i in range(0, rowsLen):
+                    columns = rows[i].find_all()
+
+                    columnsLen = len(columns)
+
+                    for j in range(0, columnsLen):
+                        # 첫 번째 행 데이터 값 수집 시에만 컬럼 값을 저장한다. (어차피 rows[0], rows[1], ... 모두 컬럼헤더는 동일한 값을 가지기 때문에 매번 반복할 필요가 없다.)
+
+                        # 컬럼값은 모든 행의 값을 저장해야한다.
+                        eachColumn = columns[j].text
+                        columnList.append(eachColumn)
+                    rowList.append(columnList)
+                    columnList = []  # 다음 row의 값을 넣기 위해 비워준다. (매우 중요!!)
+
+                result = pd.DataFrame(rowList, columns=nameList)
+                #result = result.drop(columns=['as1', 'as2', 'as3', 'as4'], axis=1) #필요없는 칼럼은 날려주기
+                result.to_csv(r'C:\Users\Seo\Desktop\Python_bj\OPEN API\result_' + str(p) + '.csv', encoding='utf-8-sig', na_rep="Null", columns=["kaptCode"])
+
+            finally:
+                pass
